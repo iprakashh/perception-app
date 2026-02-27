@@ -111,40 +111,44 @@ app.get("/admin", (req, res) => {
         <title>Admin Login</title>
         <style>
             body {
+                margin:0;
                 height:100vh;
                 display:flex;
                 justify-content:center;
                 align-items:center;
-                background:linear-gradient(135deg,#667eea,#764ba2);
+                background:linear-gradient(135deg,#667eea,#764ba2,#ff6a88);
                 font-family:Arial;
                 color:white;
             }
             .card {
                 background:rgba(255,255,255,0.15);
-                padding:40px;
-                border-radius:15px;
                 backdrop-filter:blur(20px);
+                padding:40px;
+                border-radius:20px;
                 text-align:center;
+                box-shadow:0 20px 50px rgba(0,0,0,0.4);
             }
             input {
                 padding:12px;
                 border:none;
-                border-radius:8px;
-                margin-bottom:15px;
-                width:200px;
+                border-radius:10px;
+                margin-top:15px;
+                width:220px;
+                font-size:14px;
             }
             button {
-                padding:10px 20px;
+                margin-top:15px;
+                padding:10px 25px;
                 border:none;
-                border-radius:8px;
-                cursor:pointer;
+                border-radius:10px;
                 font-weight:bold;
+                cursor:pointer;
             }
         </style>
         </head>
         <body>
             <div class="card">
-                <h2>🔐 Admin Access</h2>
+                <h2>🔐 Secure Admin Access</h2>
                 <form method="GET" action="/admin">
                     <input type="password" name="password" placeholder="Enter password" required />
                     <br/>
@@ -155,8 +159,6 @@ app.get("/admin", (req, res) => {
         </html>
         `);
     }
-
-    // ====== YOUR EXISTING ANALYTICS CODE BELOW ======
 
     const data = readData().filter(s => s.completed);
 
@@ -191,10 +193,106 @@ app.get("/admin", (req, res) => {
         : 0;
 
     res.send(`
-    <h1>📊 Analytics</h1>
-    <p>Total Responses: ${totalResponses}</p>
-    <p>Average Confidence: ${avgConfidence}</p>
-    <pre>${JSON.stringify(data,null,2)}</pre>
+    <html>
+    <head>
+    <title>Analytics Dashboard</title>
+    <style>
+        body {
+            margin:0;
+            padding:40px;
+            font-family:Arial;
+            background:linear-gradient(135deg,#667eea,#764ba2,#ff6a88);
+            color:white;
+        }
+
+        h1 { margin-bottom:30px; }
+
+        .grid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:25px;
+        }
+
+        .card {
+            background:rgba(255,255,255,0.15);
+            backdrop-filter:blur(20px);
+            padding:25px;
+            border-radius:20px;
+            box-shadow:0 20px 50px rgba(0,0,0,0.3);
+        }
+
+        .metric {
+            font-size:36px;
+            font-weight:bold;
+        }
+
+        .response {
+            background:rgba(0,0,0,0.2);
+            padding:20px;
+            border-radius:15px;
+            margin-bottom:20px;
+        }
+
+        .tag {
+            display:inline-block;
+            padding:5px 10px;
+            border-radius:20px;
+            background:rgba(255,255,255,0.2);
+            margin:3px;
+            font-size:12px;
+        }
+    </style>
+    </head>
+
+    <body>
+
+    <h1>📊 Perception Analytics</h1>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Total Responses</h3>
+            <div class="metric">${totalResponses}</div>
+        </div>
+
+        <div class="card">
+            <h3>Average Confidence</h3>
+            <div class="metric">${avgConfidence} / 10</div>
+        </div>
+    </div>
+
+    <h2 style="margin-top:40px;">📋 Individual Responses</h2>
+
+    ${data.map(session => `
+        <div class="response">
+            <h3>👤 ${session.name}</h3>
+            <p><strong>Submitted:</strong> ${new Date(session.lastUpdated).toLocaleString()}</p>
+
+            ${session.answers.personality ? `
+                <p><strong>Personality:</strong><br/>
+                ${session.answers.personality.map(t => `<span class="tag">${t}</span>`).join("")}
+                </p>
+            ` : ""}
+
+            ${session.answers.standout ? `
+                <p><strong>Standout Areas:</strong><br/>
+                ${session.answers.standout.map(a => `<span class="tag">${a}</span>`).join("")}
+                </p>
+            ` : ""}
+
+            ${session.answers.confidence ? `
+                <p><strong>Confidence:</strong> ${session.answers.confidence} / 10</p>
+            ` : ""}
+
+            ${session.answers.advice ? `
+                <p><strong>Brutal Advice:</strong><br/>
+                ${session.answers.advice}
+                </p>
+            ` : ""}
+        </div>
+    `).join("")}
+
+    </body>
+    </html>
     `);
 });
 /* ===============================
