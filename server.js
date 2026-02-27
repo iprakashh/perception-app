@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "localdev123";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -101,6 +102,62 @@ app.post("/complete-session", (req, res) => {
 
 app.get("/admin", (req, res) => {
 
+    const password = req.query.password;
+
+    if (password !== ADMIN_PASSWORD) {
+        return res.send(`
+        <html>
+        <head>
+        <title>Admin Login</title>
+        <style>
+            body {
+                height:100vh;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                background:linear-gradient(135deg,#667eea,#764ba2);
+                font-family:Arial;
+                color:white;
+            }
+            .card {
+                background:rgba(255,255,255,0.15);
+                padding:40px;
+                border-radius:15px;
+                backdrop-filter:blur(20px);
+                text-align:center;
+            }
+            input {
+                padding:12px;
+                border:none;
+                border-radius:8px;
+                margin-bottom:15px;
+                width:200px;
+            }
+            button {
+                padding:10px 20px;
+                border:none;
+                border-radius:8px;
+                cursor:pointer;
+                font-weight:bold;
+            }
+        </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>🔐 Admin Access</h2>
+                <form method="GET" action="/admin">
+                    <input type="password" name="password" placeholder="Enter password" required />
+                    <br/>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        `);
+    }
+
+    // ====== YOUR EXISTING ANALYTICS CODE BELOW ======
+
     const data = readData().filter(s => s.completed);
 
     const totalResponses = data.length;
@@ -112,19 +169,16 @@ app.get("/admin", (req, res) => {
     data.forEach(session => {
         const answers = session.answers;
 
-        // Confidence score
         if (answers.confidence) {
             confidenceScores.push(Number(answers.confidence));
         }
 
-        // Personality traits
         if (answers.personality && Array.isArray(answers.personality)) {
             answers.personality.forEach(trait => {
                 personalityCounts[trait] = (personalityCounts[trait] || 0) + 1;
             });
         }
 
-        // Standout areas
         if (answers.standout && Array.isArray(answers.standout)) {
             answers.standout.forEach(area => {
                 standoutCounts[area] = (standoutCounts[area] || 0) + 1;
@@ -137,171 +191,12 @@ app.get("/admin", (req, res) => {
         : 0;
 
     res.send(`
-    <html>
-    <head>
-    <title>Perception Analytics</title>
-    <style>
-        body {
-            margin:0;
-            padding:40px;
-            font-family:Arial, sans-serif;
-            background:linear-gradient(135deg,#667eea,#764ba2);
-            color:white;
-        }
-
-        h1 {
-            margin-bottom:30px;
-        }
-
-        .grid {
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:25px;
-        }
-
-        .card {
-            background:rgba(255,255,255,0.15);
-            backdrop-filter:blur(20px);
-            padding:25px;
-            border-radius:15px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .metric {
-            font-size:40px;
-            font-weight:bold;
-            margin-top:10px;
-        }
-
-        .bar {
-            margin:12px 0;
-        }
-
-        .bar-label {
-            font-size:14px;
-        }
-
-        .bar-fill {
-            height:10px;
-            border-radius:5px;
-            background:linear-gradient(90deg,#00f5a0,#00d9f5,#ff6a88);
-        }
-
-        .raw {
-            background:rgba(0,0,0,0.2);
-            padding:15px;
-            border-radius:10px;
-            font-size:12px;
-            overflow:auto;
-            max-height:300px;
-        }
-    </style>
-    </head>
-
-    <body>
-
-    <h1>📊 Perception Analytics Dashboard</h1>
-
-    <div class="grid">
-
-        <div class="card">
-            <h3>Total Responses</h3>
-            <div class="metric">${totalResponses}</div>
-        </div>
-
-        <div class="card">
-            <h3>Average Confidence</h3>
-            <div class="metric">${avgConfidence} / 10</div>
-        </div>
-
-        <div class="card">
-            <h3>Personality Traits</h3>
-            ${
-                Object.entries(personalityCounts).map(([key,value]) => `
-                    <div class="bar">
-                        <div class="bar-label">${key} (${value})</div>
-                        <div class="bar-fill" style="width:${value * 12}px"></div>
-                    </div>
-                `).join("")
-            }
-        </div>
-
-        <div class="card">
-            <h3>Standout Areas</h3>
-            ${
-                Object.entries(standoutCounts).map(([key,value]) => `
-                    <div class="bar">
-                        <div class="bar-label">${key} (${value})</div>
-                        <div class="bar-fill" style="width:${value * 12}px"></div>
-                    </div>
-                `).join("")
-            }
-        </div>
-
-    </div>
-
-    <div class="card" style="margin-top:30px;">
-    <h3>📋 Individual Responses</h3>
-
-    ${data.map(session => `
-        <div style="
-            background:rgba(0,0,0,0.2);
-            padding:20px;
-            border-radius:12px;
-            margin-bottom:20px;
-        ">
-
-            <h4 style="margin-top:0;">
-                👤 ${session.name}
-            </h4>
-
-            <p><strong>Submitted:</strong> 
-                ${new Date(session.lastUpdated).toLocaleString()}
-            </p>
-
-            ${session.answers.personality ? `
-                <p><strong>Personality:</strong></p>
-                <ul>
-                    ${session.answers.personality.map(trait => `<li>${trait}</li>`).join("")}
-                </ul>
-            ` : ""}
-
-            ${session.answers.standout ? `
-                <p><strong>Standout Areas:</strong></p>
-                <ul>
-                    ${session.answers.standout.map(area => `<li>${area}</li>`).join("")}
-                </ul>
-            ` : ""}
-
-            ${session.answers.confidence ? `
-                <p><strong>Confidence Score:</strong> 
-                    <span style="font-size:18px;font-weight:bold;">
-                        ${session.answers.confidence} / 10
-                    </span>
-                </p>
-            ` : ""}
-
-            ${session.answers.advice ? `
-                <p><strong>Brutal Advice:</strong></p>
-                <div style="
-                    background:rgba(255,255,255,0.1);
-                    padding:12px;
-                    border-radius:8px;
-                ">
-                    ${session.answers.advice}
-                </div>
-            ` : ""}
-
-        </div>
-    `).join("")}
-
-</div>
-
-    </body>
-    </html>
+    <h1>📊 Analytics</h1>
+    <p>Total Responses: ${totalResponses}</p>
+    <p>Average Confidence: ${avgConfidence}</p>
+    <pre>${JSON.stringify(data,null,2)}</pre>
     `);
 });
-
 /* ===============================
    Start Server
 ================================ */
