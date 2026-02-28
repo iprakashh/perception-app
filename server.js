@@ -1,60 +1,55 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
 const { v4: uuidv4 } = require("uuid");
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "localdev123";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
 app.use(express.json());
 app.use(express.static(__dirname));
 
-const filePath = __dirname + "/feedback.json";
+const DATA_FILE = path.join(__dirname, "feedback.json");
 
 /* ===============================
    Utility Functions
-================================ */
+================================= */
 
 function readData() {
-    if (!fs.existsSync(filePath)) return [];
-    const raw = fs.readFileSync(filePath);
-    return raw.length ? JSON.parse(raw) : [];
+    if (!fs.existsSync(DATA_FILE)) return [];
+    return JSON.parse(fs.readFileSync(DATA_FILE));
 }
 
-function writeData(data) {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+function saveData(data) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 /* ===============================
    Start Session
-================================ */
+================================= */
 
 app.post("/start-session", (req, res) => {
     const { name } = req.body;
 
-    if (!name) {
-        return res.status(400).json({ message: "Name is required" });
-    }
-
-    const data = readData();
-
     const newSession = {
         id: uuidv4(),
-        name,
+        name: name || "Anonymous",
         answers: {},
         completed: false,
         lastUpdated: new Date()
     };
 
+    const data = readData();
     data.push(newSession);
-    writeData(data);
+    saveData(data);
 
     res.json({ sessionId: newSession.id });
 });
 
 /* ===============================
-   Save Answer (Auto Save)
-================================ */
+   Save Answer
+================================= */
 
 app.post("/save-answer", (req, res) => {
     const { sessionId, questionId, answer } = req.body;
@@ -63,20 +58,20 @@ app.post("/save-answer", (req, res) => {
     const session = data.find(s => s.id === sessionId);
 
     if (!session) {
-        return res.status(404).json({ message: "Session not found" });
+        return res.status(404).json({ error: "Session not found" });
     }
 
     session.answers[questionId] = answer;
     session.lastUpdated = new Date();
 
-    writeData(data);
+    saveData(data);
 
-    res.json({ message: "Answer saved successfully" });
+    res.json({ success: true });
 });
 
 /* ===============================
    Complete Session
-================================ */
+================================= */
 
 app.post("/complete-session", (req, res) => {
     const { sessionId } = req.body;
@@ -85,20 +80,20 @@ app.post("/complete-session", (req, res) => {
     const session = data.find(s => s.id === sessionId);
 
     if (!session) {
-        return res.status(404).json({ message: "Session not found" });
+        return res.status(404).json({ error: "Session not found" });
     }
 
     session.completed = true;
     session.lastUpdated = new Date();
 
-    writeData(data);
+    saveData(data);
 
-    res.json({ message: "Feedback completed successfully" });
+    res.json({ success: true });
 });
 
 /* ===============================
-   Admin Analytics Dashboard
-================================ */
+   ADMIN ROUTE (Styled Dashboard)
+================================= */
 
 app.get("/admin", (req, res) => {
 
@@ -295,10 +290,9 @@ app.get("/admin", (req, res) => {
     </html>
     `);
 });
-/* ===============================
-   Start Server
-================================ */
+
+/* =============================== */
 
 app.listen(PORT, () => {
-    console.log("🚀 Server running at http://localhost:3000");
+    console.log("Server running on port " + PORT);
 });
